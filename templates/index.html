@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Vector Store Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            margin-top: 10px;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .results {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-item .score {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .result-item .text {
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .memory-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .memory-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+
+        .memory-item .content {
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        .memory-item .text {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .memory-item .meta {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .memory-item button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .memory-item button:hover {
+            background: #c82333;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            min-width: 150px;
+            margin: 5px;
+        }
+
+        .stat-box .number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-box .label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 RAG Vector Store Demo</h1>
+            <p>Semantic search powered by sentence embeddings</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="number" id="memoryCount">0</div>
+                <div class="label">Memories</div>
+            </div>
+            <div class="stat-box">
+                <div class="number" id="modelStatus">❌</div>
+                <div class="label">Model Status</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📝 Store Memory</h2>
+                <div id="storeStatus"></div>
+                <div class="form-group">
+                    <label for="storeText">Text to Store:</label>
+                    <textarea id="storeText" placeholder="Enter text to add to the vector store..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="storeMetadata">Metadata (JSON, optional):</label>
+                    <input type="text" id="storeMetadata" placeholder='{"category": "example"}'>
+                </div>
+                <button class="btn" onclick="storeMemory()">Store Memory</button>
+            </div>
+
+            <div class="card">
+                <h2>🔍 Query Store</h2>
+                <div id="queryStatus"></div>
+                <div class="form-group">
+                    <label for="queryText">Search Query:</label>
+                    <textarea id="queryText" placeholder="Enter your search query..."></textarea>
+                </div>
+                <button class="btn" onclick="queryStore()">Search</button>
+                
+                <div class="results" id="queryResults"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>💾 Memory Store</h2>
+            <div id="listStatus"></div>
+            <button class="btn btn-secondary" onclick="loadMemories()">Refresh List</button>
+            
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="pruneBySize()">Prune by Size</button>
+                <button class="btn btn-secondary" onclick="pruneDuplicates()">Remove Duplicates</button>
+                <button class="btn btn-secondary" onclick="pruneByAge()">Prune Old</button>
+                <button class="btn btn-danger" onclick="clearStore()">Clear All</button>
+            </div>
+            
+            <div class="memory-list" id="memoryList"></div>
+        </div>
+    </div>
+
+    <script>
+        let isModelReady = false;
+
+        // Initialize model on page load
+        window.addEventListener('load', async () => {
+            await initializeModel();
+            await loadMemories();
+        });
+
+        async function initializeModel() {
+            const statusEl = document.getElementById('modelStatus');
+            statusEl.textContent = '⏳';
+            
+            try {
+                const response = await fetch('/api/initialize', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    isModelReady = true;
+                    statusEl.textContent = '✅';
+                    showStatus('storeStatus', 'Model initialized successfully', 'success');
+                } else {
+                    statusEl.textContent = '❌';
+                    showStatus('storeStatus', 'Model initialization failed', 'error');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌';
+                showStatus('storeStatus', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function storeMemory() {
+            const text = document.getElementById('storeText').value;
+            const metadataStr = document.getElementById('storeMetadata').value;
+            
+            if (!text) {
+                showStatus('storeStatus', 'Please enter text to store', 'error');
+                return;
+            }
+            
+            let metadata = {};
+            if (metadataStr) {
+                try {
+                    metadata = JSON.parse(metadataStr);
+                } catch (e) {
+                    showStatus('storeStatus', 'Invalid JSON metadata', 'error');
+                    return;
+                }
+            }
+            
+            try {
+                const response = await fetch('/api/store', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, metadata })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showStatus('storeStatus', data.message, 'success');
+                    document.getElementById('storeText').value = '';
+                    document.getElementById('storeMetadata').value = '';
+                    await loadMemories();
+                } else {
+                    showStatus('storeStatus', data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('storeStatus', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function queryStore() {
+            const query = document.getElementById('queryText').value;
+            
+            if (!query) {
+                showStatus('queryStatus', 'Please enter a search query', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success' || data.results) {
+                    displayResults(data.results);
+                    showStatus('queryStatus', 'Search completed', 'success');
+                } else {
+                    showStatus('queryStatus', data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('queryStatus', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        function displayResults(results) {
+            const resultsEl = document.getElementById('queryResults');
+            
+            if (!results || results.length === 0) {
+                resultsEl.innerHTML = '<p style="color: #666; margin-top: 15px;">No results found</p>';
+                return;
+            }
+            
+            resultsEl.innerHTML = results.map(r => `
+                <div class="result-item">
+                    <span class="score">Score: ${(r.score * 100).toFixed(1)}%</span>
+                    <div class="text">${escapeHtml(r.text)}</div>
+                </div>
+            `).join('');
+        }
+
+        async function loadMemories() {
+            try {
+                const response = await fetch('/api/list');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('memoryCount').textContent = data.count;
+                    displayMemories(data.memories);
+                }
+            } catch (error) {
+                showStatus('listStatus', 'Error loading memories: ' + error.message, 'error');
+            }
+        }
+
+        function displayMemories(memories) {
+            const listEl = document.getElementById('memoryList');
+            
+            if (!memories || memories.length === 0) {
+                listEl.innerHTML = '<p style="color: #666; margin-top: 15px; text-align: center;">No memories stored</p>';
+                return;
+            }
+            
+            listEl.innerHTML = memories.map(m => {
+                const date = new Date(m.timestamp * 1000).toLocaleString();
+                return `
+                    <div class="memory-item">
+                        <div class="content">
+                            <div class="text">${escapeHtml(m.text)}</div>
+                            <div class="meta">${date}</div>
+                        </div>
+                        <button onclick="deleteMemory('${m.id}')">Delete</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function deleteMemory(id) {
+            try {
+                const response = await fetch(`/api/delete/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showStatus('listStatus', data.message, 'success');
+                    await loadMemories();
+                } else {
+                    showStatus('listStatus', data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('listStatus', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function clearStore() {
+            if (!confirm('Are you sure you want to clear all memories?')) return;
+            
+            try {
+                const response = await fetch('/api/clear', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showStatus('listStatus', data.message, 'success');
+                    await loadMemories();
+                } else {
+                    showStatus('listStatus', data.message, 'error');
+                }
+            } catch (error) {
+                showStatus('listStatus', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function pruneBySize() {
+            const maxSize = prompt('Enter maximum number of memories to keep:', '200');
+            if (!maxSize) return;
+            
+            try {
+                const response = await fetch('/api/prune/size', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ max_memories: parseInt(maxSize) })
+                });
+                
+                const data = await response.json();
+                showStatus('listStatus', data.message, 'success');
+                await loadMemories();
+            } catch (error) {
+                showStatus('listStatus', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function pruneByAge() {
+            const hours = prompt('Remove memories older than (hours):', '24');
+            if (!hours) return;
+            
+            try {
+                const response = await fetch('/api/prune/age', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ max_age_ms: parseInt(hours) * 3600000 })
+                });
+                
+                const data = await response.json();
+                showStatus('listStatus', data.message, 'success');
+                await loadMemories();
+            } catch (error) {
+                showStatus('listStatus', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        async function pruneDuplicates() {
+            const threshold = prompt('Enter similarity threshold (0.0-1.0):', '0.95');
+            if (!threshold) return;
+            
+            try {
+                const response = await fetch('/api/prune/duplicates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ threshold: parseFloat(threshold) })
+                });
+                
+                const data = await response.json();
+                showStatus('listStatus', data.message, 'success');
+                await loadMemories();
+            } catch (error) {
+                showStatus('listStatus', 'Error: ' + error.message, 'error');
+            }
+        }
+
+        function showStatus(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="status ${type}">${escapeHtml(message)}</div>`;
+            setTimeout(() => {
+                el.innerHTML = '';
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
